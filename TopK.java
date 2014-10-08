@@ -58,7 +58,7 @@ public class TopK {
         //    context.write(key, );
         //}
 		Text word = new Text();
-		for (java.util.Map.Entry<Integer, String> entry : TopK.entrySet()) {
+		for (java.util.Map.Entry<Integer, String> entry : TopK.descendingMap().entrySet()) {
 			word.set(entry.getValue());
 			context.write(word, new IntWritable(entry.getKey()));
 		}
