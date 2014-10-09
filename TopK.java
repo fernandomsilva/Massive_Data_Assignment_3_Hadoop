@@ -13,7 +13,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-        
+
+
 public class TopK {
         
  public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
@@ -27,7 +28,7 @@ public class TopK {
 			String new_token = tokenizer.nextToken();
 			if (new_token.length() == 7) {
             	//word.set(tokenizer.nextToken());
-				word.set(new_token);
+				word.set(new_token.toLowerCase());
 	            context.write(word, one);
 			}
         }
@@ -35,7 +36,7 @@ public class TopK {
  } 
         
  public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> {
-	private TreeMap<Integer, String> TopK = new TreeMap<Integer, String>();
+	private TreeMap<Integer, List<String>> TopK = new TreeMap<Integer, List<String>>();
 	private Integer N = 100;
 
     public void reduce(Text key, Iterable<IntWritable> values, Context context) 
@@ -45,9 +46,17 @@ public class TopK {
             sum += val.get();
         }
 		
-		TopK.put(sum, key.toString());
-		if (TopK.size() > N) {
-			TopK.remove(TopK.firstKey());
+		if (TopK.containsKey(sum)) {
+			(TopK.get(sum)).add(key.toString());	
+		}
+		else {
+			List<String> l = new ArrayList<String>();
+
+			l.add(key.toString());
+			TopK.put(sum, l);
+			//if (TopK.size() > N) {
+			//	TopK.remove(TopK.firstKey());
+			//}
 		}
         //context.write(key, new IntWritable(sum));
     }
@@ -58,9 +67,27 @@ public class TopK {
         //    context.write(key, );
         //}
 		Text word = new Text();
-		for (java.util.Map.Entry<Integer, String> entry : TopK.descendingMap().entrySet()) {
-			word.set(entry.getValue());
-			context.write(word, new IntWritable(entry.getKey()));
+		int total = 0;
+		for (java.util.Map.Entry<Integer, List<String>> entry : TopK.descendingMap().entrySet()) {
+			if (entry.getValue().size() == 1)
+			{
+				word.set((entry.getValue()).get(0));
+				context.write(word, new IntWritable(entry.getKey()));
+				total = total + 1;
+			}
+			else {
+				for (int i=0; i<entry.getValue().size(); i++) {
+					word.set((entry.getValue()).get(i));
+					context.write(word, new IntWritable(entry.getKey()));
+					total = total + 1;
+					if (total == N) {
+						break;
+					}
+				}
+			}
+			if (total == N) {
+				break;
+			}
 		}
     }
  }
